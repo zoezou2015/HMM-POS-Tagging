@@ -14,7 +14,6 @@ public class BaselineParser {
 	public static void main(String[] args){
 		String train_file = "data/train.pos";
 		BaselineParser p = new BaselineParser(train_file);
-		p.Encoder();
 	}
 	
 	Scanner scanner;

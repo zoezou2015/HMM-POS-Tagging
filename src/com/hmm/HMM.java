@@ -20,10 +20,10 @@ public class HMM {
 		eval.eval();
 	}
 	
-	HashMap<String,Integer> _wordCount = new HashMap<String, Integer>();
-	HashMap<String, Integer> _tagCount = new HashMap<String, Integer>();
+	HashMap<String, HashMap<String, Integer>> _word2tagCount  ;
+	HashMap<String, Integer> _tagCount  ;
 	HashMap<String, HashMap<String, Integer>> _bigramTagCount = new HashMap<String, HashMap<String,Integer>>();
-	HashMap<String, HashMap<String, Integer>> _tag2WordCount = new HashMap<String, HashMap<String,Integer>>();
+	HashMap<String, HashMap<String, Integer>> _tag2wordCount = new HashMap<String, HashMap<String,Integer>>();
 	HashMap<String, HashMap<String, Double>> _transition = new HashMap<String, HashMap<String, Double>>();
 	HashMap<String, HashMap<String, Double>> _emission = new HashMap<String, HashMap<String, Double>>();
 	
@@ -32,22 +32,19 @@ public class HMM {
 	ArrayList<String> _tagSequence = new ArrayList<String>();
 	ArrayList<String> _tagSequenceFromFile = null;
 	
-	boolean ADDONE = false;
-	
+	boolean ADDONE = true;
 	
 	public HMM(){
 		String train_path = "data/train.pos";
-		String test_path = "data/test.pos";
+		String test_path = "data/debug.pos";
 		
 		HMMParser hTrain = new HMMParser(train_path);
-		hTrain.HMMEncoder();
-		this._wordCount = hTrain.getWordCount();
+		this._word2tagCount = hTrain.getWord2TagCount();
 		this._tagCount = hTrain.getTagCount();
-		this._tag2WordCount = hTrain.getTag2WordCount();
+		this._tag2wordCount = hTrain.getTag2WordCount();
 		this._bigramTagCount = hTrain.getBigramTagCount();
 		
 		HMMParser hTest = new HMMParser(test_path);
-		hTest.HMMEncoder();
 		this._wordSequence = hTest.getWordSequence();
 		this._tagSequenceFromFile = hTest.getTagSequence();
 		Viterbi();
@@ -57,20 +54,25 @@ public class HMM {
 		boolean isStart = true;
 		HashMap<String, Node> prevMap = null;
 		int j = 0;
+		int maxLength = 0;
+		int sentenceL = 0;
+		ArrayList<Node> track = new ArrayList<Node>();
 		for(int i=0;i<this._wordSequence.size();i++){
 			HashMap<String, Node> subMap = new HashMap<String,Node>();
 			String word = this._wordSequence.get(i);
-//			if (i%1000==0) {
-//                System.out.println("working on "+i+" of "+this._wordSequence.size()+" words");
-//            }
-			
+			if (i%1000==0) {
+//                System.out.println("working on "+(i+1)+" of "+this._wordSequence.size()+" words");
+            }
+			sentenceL ++;
 			if(isStart){
 				Node n = new Node("<s>", word, null, 1.0);
 				subMap.put("<s>", n);
 				isStart= false;
 			} else{
-				if(this._tag2WordCount.containsKey(word)){
-					HashMap<String, Integer> tag2count = this._tag2WordCount.get(word);
+//				System.out.println("working on "+(i+1)+" of "+this._wordSequence.size()+" words");
+
+				if(this._word2tagCount.containsKey(word)){
+					HashMap<String, Integer> tag2count = this._word2tagCount.get(word);
 					for(String tag : tag2count.keySet()){
 						subMap.put(tag, calcNode(word, tag, prevMap));
 					}
@@ -87,6 +89,7 @@ public class HMM {
                 } else if (word.matches(".*ed")) {
                     subMap.put("VBN", calcNode(word, "VBN", prevMap));
                 } else if (word.matches(".*s")) {
+                
                     subMap.put("NNS", calcNode(word, "NNS", prevMap));
                 } else{
 					for(String tag : this._tagCount.keySet()){
@@ -95,13 +98,17 @@ public class HMM {
 				}
 				if((i == this._wordSequence.size()-1) || (this._wordSequence.get(i+1).equals("<s>"))){
 					j++;
-					backtrace(subMap);
+					if(sentenceL>maxLength){
+						maxLength = sentenceL;
+					}
+					sentenceL = 0;
+					backtrace(subMap,i);
 					isStart = true;
 				}
 			}
 			prevMap = subMap;					
 		}
-		System.out.println(j);
+		System.out.println("the number of sentences in corpus: "+maxLength);
 	}
 	
 	private int counts(HashMap<String, Integer> map, String key1){
@@ -111,7 +118,6 @@ public class HMM {
 	private int counts(HashMap<String, HashMap<String, Integer>> map, String key1, String key2){
 		return map.containsKey(key1)? counts(map.get(key1), key2): 0;	
 	}
-	
 	
 	public double calcTrasition(String prevTag, String currTag){
 		if(ADDONE){
@@ -123,9 +129,9 @@ public class HMM {
 	
 	public double calcEmission(String word, String tag){
 		if(ADDONE){
-			return (counts(this._tag2WordCount, word, tag)+1)/(counts(this._wordCount, word)+this._wordCount.keySet().size()+0.0);
+			return (counts(this._tag2wordCount, word, tag)+1)/(counts(this._tagCount, word)+this._word2tagCount.keySet().size()+0.0);
 		} else{
-			return counts(this._tag2WordCount, word, tag)/(counts(this._wordCount, word)+0.0);
+			return counts(this._tag2wordCount, word, tag)/(counts(this._tagCount, word)+0.0);
 
 		}
 	}
@@ -146,17 +152,17 @@ public class HMM {
 		return new Node(tag, word, maxN, maxProb);
 	}
 	
-	public void backtrace(HashMap<String, Node> map){
+	public void backtrace(HashMap<String, Node> map,int i){
 //		Node maxN = new Node("NOMAX", "NOMAX");
 		Node maxN = null;
 		double maxP = 0.0;
-		for(String key:map.keySet()){			
+		
+		for(String key:map.keySet()){	
 			if(map.get(key).get_prob()>maxP){
+				
 				maxN = map.get(key);
 				maxP = maxN.get_prob();
-			}
-			
-				
+			}				
 		}
 		
 		Stack<Node> stack = new Stack<Node>();
@@ -164,7 +170,9 @@ public class HMM {
 			stack.push(maxN);
 			maxN = maxN.get_parent();
 		}
-		
+		if(stack.size()==0){
+			System.out.println("s"+i+"prob"+maxP);
+		}
 		while(!stack.isEmpty()){
 			Node n = stack.pop();
 			this._tagSequence.add(n.get_tag());

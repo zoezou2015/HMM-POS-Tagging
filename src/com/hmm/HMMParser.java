@@ -14,19 +14,19 @@ public class HMMParser {
 	public static void main(String[] args){
 		String train_file = "data/train.pos";
 		HMMParser p = new HMMParser(train_file);
-		p.HMMEncoder();
+//		p.HMMEncoder();
 	}
 	
 	Scanner scanner;
 	
-	private HashMap<String,Integer> wordCount = new HashMap<String, Integer>();
+	private HashMap<String, HashMap<String, Integer>>  word2tagCount = new HashMap<String, HashMap<String, Integer>> ();
 	
 	private HashMap<String, Integer> tagCount = new HashMap<String, Integer>();
 	private HashMap<String, HashMap<String, Integer>> bigramTagCount = new HashMap<String, HashMap<String,Integer>>();
 	private HashMap<String, HashMap<String, Integer>> tag2WordCount = new HashMap<String, HashMap<String,Integer>>();
 	private ArrayList<String> wordSequence = new ArrayList<String>();
 	private ArrayList<String> tagSequence = new ArrayList<String>();
-
+	int numTrainingBigrams = 0;
 	
 	public ArrayList<String> getWordSequence(){
 		return wordSequence;
@@ -37,13 +37,13 @@ public class HMMParser {
 		return tagSequence;
 	}
 	
-	public HashMap<String, Integer> getWordCount() {
-		return wordCount;
+	public HashMap<String, HashMap<String, Integer>> getWord2TagCount() {
+		return word2tagCount;
 	}
 
 
-	public void setWordCount(HashMap<String, Integer> wordCount) {
-		this.wordCount = wordCount;
+	public void setWordCount(HashMap<String, HashMap<String, Integer>> word2tagCount) {
+		this.word2tagCount = word2tagCount;
 	}
 
 
@@ -86,6 +86,7 @@ public class HMMParser {
 		} catch(FileNotFoundException e){
 			e.printStackTrace();
 		}
+		
 	}
 	
 	public void HMMEncoder(){
@@ -95,24 +96,28 @@ public class HMMParser {
 			wordSequence.add(prevWord);
 			tagSequence.add(prevTag);
 			addOne(tagCount, prevTag);
-			addOne(wordCount, prevWord);
+			addOne(word2tagCount, prevWord, prevTag);
 			addOne(tag2WordCount, prevTag, prevWord);
 		
 		
 //		System.out.println(prevWord);
-		while(scanner.hasNext()){
-			String currTag = scanner.next();
-			String currWord = scanner.next();
-			addOne(tagCount, currTag);
-			addOne(wordCount, currWord);
-			addOne(bigramTagCount, prevTag, currTag);
-			addOne(tag2WordCount, currWord, currTag);
-			prevTag = currTag;
-			prevWord = currWord;
-			wordSequence.add(currWord);
-			tagSequence.add(currTag);
+			while(scanner.hasNext()){
+				String currTag = scanner.next();
+				String currWord = scanner.next();
+				addOne(tagCount, currTag);
+				addOne(word2tagCount, currWord, currTag);
+				addOne(bigramTagCount, prevTag, currTag);
+				addOne(tag2WordCount, currWord, currTag);
+				prevTag = currTag;
+				prevWord = currWord;
+				wordSequence.add(currWord);
+				tagSequence.add(currTag);
+			}
+		    numTrainingBigrams ++;
 		}
-		}
+//		System.out.println("word length: "+wordSequence.size());
+//		System.out.println("tag length: "+tagSequence.size());
+		scanner.close();
 	}
 	
 	
