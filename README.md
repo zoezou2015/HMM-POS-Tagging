@@ -2,7 +2,7 @@
 
 Baseline
 
-For each word, it the word occurred in training corpus, then find the most frequent tag for it. Otherwise, get the most frequent tag 
+For each word, if the word occurred in training corpus, then find the most frequent tag for it. Otherwise, get the most frequent tag 
 which occurs most times in global training corpus.
 
 HMM Parser
